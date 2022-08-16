@@ -1,0 +1,34 @@
+.selection-template {
+  display: flex;
+  flex-wrap: wrap;
+  &__item {
+    width: 128px;
+    height: 118px;
+    background: #e9ecf0;
+    border: 1px solid #e9ecf0;
+    border-radius: 4px;
+    position: relative;
+    margin: 0px 8px 8px 0;
+    &:nth-child(2n) {
+      margin-right: 0;
+    }
+    &.active {
+      border: 1px solid #2f7fff;
+    }
+    .choose {
+      width: 30px;
+      height: 30px;
+      position: absolute;
+      top: 0;
+      right: 0;
+      // background: #2F7FFF;
+      background: conic-gradient(from 90deg at 0 0, #2f7fff 0, #2f7fff 45deg, transparent 45.1deg);
+      .anticon-check {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        color: #fff;
+      }
+    }
+  }
+}

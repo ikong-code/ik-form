@@ -1,0 +1,24 @@
+.xcollapse-container {
+  height: auto;
+  box-shadow: inset 0 1px 0 0 #e9ecf0;
+  &__header {
+    height: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #5c626b;
+    cursor: pointer;
+    font-size: 12px;
+    .anticon {
+      color: #959ba3;
+    }
+  }
+  &__content {
+    transition: 0.5s ease;
+    height: 0;
+    overflow: hidden;
+    &.show {
+      height: auto;
+    }
+  }
+}

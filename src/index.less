@@ -1,0 +1,46 @@
+// todo var
+.setters-container {
+  width: 280px;
+  height: 100%;
+  margin: 50px auto;
+  &__setting {
+    height: 100%;
+    .tab-list {
+      height: 40px;
+      padding: 8px 8px 0 8px;
+      font-size: 12px;
+      flex-shrink: 0;
+      display: flex;
+      user-select: none;
+      background-color: #f7f8f9;
+      .tab {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        &.active {
+          background-color: #fff;
+          color: #2f7fff;
+        }
+      }
+    }
+    .content {
+      height: calc(100% - 40px);
+      overflow: auto;
+      padding: 0 8px;
+      padding-bottom: 20px;
+    }
+  }
+
+  .stroke-item {
+    text-align: center;
+    &:last-of-type {
+      margin-right: 0;
+    }
+    & > span {
+      margin-top: 4px;
+      color: #959ba3;
+    }
+  }
+}
