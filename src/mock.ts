@@ -1,26 +1,72 @@
 export const schema = [
   {
-    key: 'inputName',
+    key: 'firstName',
     type: 'XInput',
     required: true,
     ui: {
       label: 'Input Name',
     },
     props: {
-      placeholder: '请输入input name'
+      placeholder: 'first name'
     }
   },
   {
-    key: 'copyName',
+    key: 'secondName',
     type: 'XInput',
     required: true,
     ui: {
-      label: 'Copy Name',
+      label: 'Second Name',
     },
     props: {
-      placeholder: '请输入copy name'
+      placeholder: 'second name'
+    }
+  },
+  {
+    key: 'thirdName',
+    type: 'XInput',
+    required: true,
+    ui: {
+      label: 'Third Name',
+    },
+    props: {
+      placeholder: 'third name'
+    }
+  },
+  {
+    key: 'fourthName',
+    type: 'XInput',
+    required: true,
+    ui: {
+      label: 'Fourth Name',
+    },
+    props: {
+      placeholder: 'fourth name'
     }
   }
 ]
 
-export const xlinkargs = []
+
+export const schema2 = [
+  {
+    key: 'firstName1',
+    type: 'XInput',
+    required: true,
+    ui: {
+      label: 'Input Name',
+    },
+    props: {
+      placeholder: 'first name'
+    }
+  },
+  {
+    key: 'secondName2',
+    type: 'XInput',
+    required: true,
+    ui: {
+      label: 'Second Name',
+    },
+    props: {
+      placeholder: 'second name'
+    }
+  },
+]

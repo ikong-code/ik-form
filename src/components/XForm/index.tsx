@@ -6,8 +6,14 @@ import { XFormItem } from '../index'
 import './index.less'
 
 const Form = (
-  { form, onFinish, onFinishFailed, initialValues, schema, xlinkages, components = {}, onResponsive, watch, children }: any
+  { form, onFinish, onFinishFailed, children }: any
 ) => {
+
+  const { schema, customRegisterComps = {}, onResponsive } = form
+  const { setCallback, responsiveFieldValue, dispatch } = form
+
+  const [allRegisterComps] = useState(Object.assign(AllFormFields, customRegisterComps))
+
   /** 初始化时 递归遍历获取动态配置field 的 defaultValue */
   // const getInitValues = (schema: []) => {
   //   const initValues: { [key: string]: any } = {}
@@ -32,13 +38,7 @@ const Form = (
 
   // 创建 form 状态管理实例
   // 将json里配置的defaultValue 与 传进来的 initialValue 合并
-  const { setCallback, responsiveFieldValue, dispatch } = form
 
-
-  const [allRegisterComps] = useState(Object.assign(AllFormFields, components, form.components))
-  console.log(allRegisterComps, 'allRegisterComps')
-  
-  console.log(form)
 
   // 向 form 注册回调函数
   setCallback({
@@ -79,7 +79,7 @@ const Form = (
         props = {}
       } = i
 
-      const Component = AllFormFields[type]
+      const Component = allRegisterComps[type]
 
       if (!Component) {
         return null

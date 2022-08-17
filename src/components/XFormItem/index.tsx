@@ -1,7 +1,6 @@
 import {
   useContext,
   useMemo,
-  useEffect,
   useState,
   cloneElement,
   isValidElement,
@@ -11,7 +10,6 @@ import FormContext from '../../context/formContext'
 import Label from './label'
 import Message from './message'
 import { XFormItemProps } from '../../types'
-import EventBus from '../../utils/eventBus'
 
 const XFormItem = ({
   name,
@@ -24,20 +22,19 @@ const XFormItem = ({
   visible = true,
   trigger = 'onChange',
   isContainer = false, // 组件类型
-  xLinkages
 }: // validateTrigger = "onChange",
 XFormItemProps) => {
   const formInstance = useContext<any>(FormContext)
   const { registerValidateFields, dispatch, unRegisterValidate } = formInstance
   const [fieldVisible, setFieldVisible] = useState(visible)
-  const [watchResult, setWatchResult] = useState(null)
 
   const [, forceUpdate] = useState({})
 
   const onStoreChange = useMemo(() => {
     const onStoreChange = {
-      changeValue() {
+      changeValue({ visible, ...rest }) {
         forceUpdate({})
+        setFieldVisible(visible)
       }
     }
     return onStoreChange
@@ -51,36 +48,14 @@ XFormItemProps) => {
         required,
         hidden,
         visible,
-        xLinkages,
         defaultValue,
-        isContainer
+        isContainer,
+        label: ui?.label
       })
     return () => {
       name && unRegisterValidate(name)
     }
   }, [onStoreChange])
-
-  // 联动监听
-  useEffect(() => {
-    EventBus.addListener('xlinkageswatch', values => {
-      const { sourceField, targetField, value, condition } = values
-      if (name === sourceField) {
-        // 监听 field 变动时 执行 condition
-        const { label, ...rest } = condition(value)
-        setWatchResult(rest)
-      }
-    })
-
-    EventBus.addListener('xlinkagesSelfVisible', values => {
-      const { sourceField, targetField, value, condition } = values
-      if (name === sourceField) {
-        // 监听 field 变动时 执行 condition
-        const result = condition(value)
-        setFieldVisible(result)
-        dispatch({ type: 'setFieldsVisible' }, name, result)
-      }
-    })
-  }, [])
 
   // label 上额外的操作配置 比如 switch 触发事件时将此 key: values 值放入到组件value中
   const handleLabelSwitchChange = (val: boolean | unknown) => {
@@ -94,7 +69,7 @@ XFormItemProps) => {
 
     // 更改表单的值
     const handleChange = (val: any) => {
-      dispatch({ type: 'setFieldsValue' }, name, val)
+      dispatch({ type: 'setFieldValue' }, name, val)
     }
 
     mergeChildrenProps[trigger] = handleChange
@@ -120,10 +95,9 @@ XFormItemProps) => {
     if (isValidElement(children)) {
       return cloneElement(children, {
         ...getControlled(children),
-        xlinkageswatch: watchResult
       } as any)
     }
-    return cloneElement(children, { xlinkageswatch: watchResult })
+    return cloneElement(children)
   }
 
   if (!fieldVisible) {

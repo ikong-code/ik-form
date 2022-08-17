@@ -4,22 +4,22 @@ import EventBus from './eventBus'
 export const formInstanceApi = [
   'setCallback',
   'dispatch',
-  'registerValidateFields',
-  // 'isRegisterField',
+  'registerValidateFields', // 注册表单字段
   'resetFields', // 重置字段
-  'setFields',
-  'setFieldsValue',
-  'setFieldsLabelOperateValue',
-  'getFieldsValue',
-  'getFieldValue',
-  'validateFields',
+  'setFields', // 设置一组数据
+  'setFieldValue', // 设置单个数据
+  'setFieldsLabelOperateValue', // label 上的操作更改时 触发的事件
+  'getFieldState', // 获取单个字段属性值
+  'setFieldState', // 设置单个字段属性值
+  'getFormValue', // 提交时获取表单数据
+  'getFieldValue', // 获取单个字段值
+  'validateFields', // 执行表单全量校验
   'responsiveFieldValue', // 响应式返回数据(单个组件数据)
-  'submit',
-  'unRegisterValidate',
+  'submit', // 提交
+  'unRegisterValidate', // 注销字段
   'initEffect',
-  'setFieldVisible',
-  'getFieldState',
-  'getFormModel'
+  // 'setFieldVisible',
+  'getFormModel' // 获取表单模型
 ]
 
 export const isReg = value => value instanceof RegExp
@@ -28,62 +28,38 @@ export const isReg = value => value instanceof RegExp
  *
  */
 export class FormStore {
-  constructor(forceUpdate, defaultFormValue = {}, xlinkages) {
+  constructor(forceUpdate, {initialValues = {}, watch}) {
     this.FormUpdate = forceUpdate // form 的更新函数
     this.model = {} // 表单状态
     this.control = {} // 控制每个FormItem
     this.isSchedule = false
     this.callback = {} // 存放监听函数
     this.penddingValidateQueue = [] // 批量更新队列
-    this.defaultFormValue = defaultFormValue // 表单初始化的值
-    this.xlinkagesRelate = new Map() // 维护 xlinkages 关系 type = watch
-    this.xlinkagesVisible = new Map() //  维护 xlinkages 关系 Map数据结构 type = visible
-    this.initXlinkages(xlinkages)
+    this.defaultFormValue = initialValues // 表单初始化的值
+    this.limitStateKeys = ['value', 'visible', 'rule', 'required'] // 获取字段状态时，呈现给用户可操作的值
+    this.watch = watch // 监听事件注册
+    this.watchValueKeys = [] // 监听value值变化的事件keys
+    this.watchVisibleKeys = [] // 监听visible值变化的事件keys
+    this.initWatchRelate(watch)
   }
 
-  // 初始化处理联动关系
-  initXlinkages(xlinkages = []) {
-    xlinkages.forEach(x => {
-      // 组件值变动 控制其他组件是否显隐
-      if (x.type === 'target:visible') {
-        const sourceFieldName = x.source
-        x.rules.forEach(rule => {
-          const { target, condition } = rule
-          const targetList = target.split(',')
-          targetList.forEach(t => {
-            const targetFieldName = t?.trim()
-            if (!this.xlinkagesVisible.has(sourceFieldName)) {
-              this.xlinkagesVisible.set(sourceFieldName, [{ field: targetFieldName, condition }])
-            } else {
-              const keyValue = this.xlinkagesVisible.get(sourceFieldName)
-              this.xlinkagesVisible.set(sourceFieldName, [
-                ...keyValue,
-                { field: targetFieldName, condition }
-              ])
-            }
-          })
-        })
-      }
-      // 组件自身 监控 target值的变化
-      if (x.type === 'self:watch') {
-        const sourceFieldName = x.source
-        const targetFieldNameList = x.target.split(',')
-        targetFieldNameList.forEach(t => {
-          const targetFieldName = t?.trim()
-          if (!this.xlinkagesRelate.has(targetFieldName)) {
-            this.xlinkagesRelate.set(targetFieldName, [
-              { field: sourceFieldName, condition: x.condition }
-            ])
-          } else {
-            const keyValue = this.xlinkagesRelate.get(targetFieldName)
-            this.xlinkagesRelate.set(targetFieldName, [
-              ...keyValue,
-              { field: sourceFieldName, condition: x.condition }
-            ])
-          }
-        })
-      }
-    })
+  // 初始化时收集 watch 类型
+  initWatchRelate(watch) {
+    const keys = Object.keys(watch)
+    const valueKeys = []
+    const visibleKeys = []
+    if(Object.keys(watch)?.length) {
+      keys.forEach(key => {
+        const [name, type] = key.split('.')
+        if(type === 'value') {
+          valueKeys.push(name)
+        } else if(type === 'visible') {
+          visibleKeys.push(name)
+        }
+      })
+      this.watchValueKeys = valueKeys
+      this.watchVisibleKeys = visibleKeys
+    }
   }
 
   // 提供操作form的方法
@@ -100,7 +76,7 @@ export class FormStore {
 
   // 创建一个验证模块
   createValidate(name, validate) {
-    const { value, rule, required, message, visible, hidden, xLinkages, isContainer, ...rest } =
+    const { value, rule, required, message, visible, hidden, isContainer, ...rest } =
       validate
     return {
       value,
@@ -109,8 +85,7 @@ export class FormStore {
       message: message || '',
       status: 'pending',
       visible,
-      hidden,
-      xLinkages,
+      hidden, // todo
       isContainer,
       ...rest
     }
@@ -124,7 +99,7 @@ export class FormStore {
   // 所有组件注册完之后 初始化执行一次
   initEffect() {
     for (let item in this.model) {
-      this.setFieldsValue(item, this.model[item]?.value)
+      this.setFieldValue(item, this.model[item]?.value)
     }
   }
 
@@ -174,7 +149,7 @@ export class FormStore {
   // isChangeResponsiveField 默认开启响应式更新，submit 时关闭
   notifyChange(name, isChangeResponsiveField = true) {
     const controller = this.control[name]
-    if (controller) controller?.changeValue()
+    if (controller) controller?.changeValue({ ...this.model[name] })
     isChangeResponsiveField && this.responsiveFieldValue(name)
   }
 
@@ -201,8 +176,6 @@ export class FormStore {
     Object.keys(this.model).forEach(modelName => {
       if (!this.model[modelName].isContainer) {
         this.setValueClearStatus(this.model[modelName], modelName, null)
-        console.log()
-        formData[modelName] = this.model[modelName].value
       }
     })
   }
@@ -211,17 +184,26 @@ export class FormStore {
   setFields(object) {
     if (typeof object !== 'object') return
     Object.keys(object).forEach(modelName => {
-      this.setFieldsValue(modelName, object[modelName].value)
+      this.setFieldValue(modelName, object[modelName].value)
     })
   }
 
   // 设置字段显隐
-  setFieldVisible(name, visible) {
-    this.model[name].visible = visible
-  }
-  getFieldState(name) {
-    if (!this.model[name]) return null
-    return this.model[name]
+  // setFieldVisible(name, visible) {
+  //   this.model[name].visible = visible
+  // }
+
+  // 给用户使用的字段属性集合
+  getLimitFieldState(model) {
+    // const model = state || this.model[name]
+    if (!model) return null
+    const newState = {}
+    for(let i in model) {
+      if(this.limitStateKeys.includes(i)) {
+        newState[i] = model[i]
+      }
+    }
+    return newState
   }
 
   /* 复制并清空状态 */
@@ -237,54 +219,80 @@ export class FormStore {
     this.model[name] = { ...this.model[name], ...{ value } }
   }
 
-  setFieldsValue(name, modelValue) {
-    const model = this.model[name]
-    if (!model) return false
-    this.setValueClearStatus(model, name, modelValue)
-    // if (typeof modelValue === "object") {
-    //   const { message, rule, value } = modelValue
-    //   console.log(modelValue, 'modelValue')
-    //   if (message) model.message = message
-    //   if (rule) model.rule = rule
-    //   if (value) model.value = value
-    //   model.status = "pending"
-    //   this.validateFieldValue(name, true)
-    // } else {
-    // this.setValueClearStatus(model, name, modelValue)
-    // }
-    // 检验是否有联动关系
-    for (let item of this.xlinkagesRelate) {
-      const [fieldName, relates] = item
-      if (name === fieldName) {
-        relates.forEach(r => {
-          const { field, condition } = r
-          EventBus.emit('xlinkageswatch', {
-            sourceField: field,
-            targetField: name,
-            condition,
-            value: modelValue
-          })
-        })
-      }
-    }
-    for (let item of this.xlinkagesVisible) {
-      const [fieldName, relates] = item
-      if (name === fieldName) {
-        relates.forEach(r => {
-          const { field, condition } = r
-          EventBus.emit('xlinkagesSelfVisible', {
-            sourceField: field,
-            targetField: name,
-            condition,
-            value: modelValue
-          })
+  triggerSetVisible(model, name) {
+    if(this.watchVisibleKeys.includes(name)) {
+      const fn = this.watch[name + '.visible']
+      if(typeof fn === "function") {
+        fn({
+          value: model.value,
+          visible: model.visible,
+          required: model.required,
+          name
         })
       }
     }
   }
 
+  // 设置对应字段的状态 目前仅能修改这些值 value / visible / rule / required
+  setFieldState(name, state) {
+    const names = name.split('|')
+    names.forEach(name => {
+      const model = this.model[name]
+      if (!model) return null
+      const newState = this.getLimitFieldState(state)
+      const newModel = Object.assign(model, newState)
+      if(newState.visible !== undefined) {
+        console.log(newState)
+        this.triggerSetVisible(newModel, name)
+      }
+      model.status = 'pendding'
+      this.model[name] = newModel
+      this.notifyChange(name)
+    })
+  }
+
+  // 获取字段状态
+  getFieldState(name) {
+    if (!this.model[name]) return null
+    return this.getLimitFieldState(this.model[name])
+  }
+
+  // 设置对应字段的value值
+  setFieldValue(name, modelValue) {
+    const model = this.model[name]
+    if (!model) return false
+    this.setValueClearStatus(model, name, modelValue)
+    if(this.watchValueKeys.includes(name)) {
+      const fn = this.watch[name + '.value']
+      if(typeof fn === "function") {
+        fn({
+          value: model.value,
+          visible: model.visible,
+          required: model.required,
+          name
+        })
+      }
+    }
+  }
+
+    // 获取对应字段名的值
+    getFieldValue(name) {
+      const model = this.model[name]
+      // 没有注册但有默认值
+      if (!model && this.defaultFormValue[name]) {
+        return this.defaultFormValue[name]
+      }
+      return model ? model.value : null
+    }
+  
+    // 获取单个字段模型  message组件里需用到
+    getFieldModel(name) {
+      const model = this.model[name]
+      return model ? model : {}
+    }
+
   // 获取表单数据层的值
-  getFieldsValue() {
+  getFormValue() {
     const formData = {}
     Object.keys(this.model).forEach(modelName => {
       // 不提交 容器的值
@@ -296,24 +304,9 @@ export class FormStore {
     return formData
   }
 
-  // 获取表单模型
-  getFieldModel(name) {
-    const model = this.model[name]
-    return model ? model : {}
-  }
-
-  // 获取对应字段名的值
-  getFieldValue(name) {
-    const model = this.model[name]
-    // 没有注册但有默认值
-    if (!model && this.defaultFormValue[name]) {
-      return this.defaultFormValue[name]
-    }
-    return model ? model.value : null
-  }
-
   /* 单一表单单元项验证 */
   validateFieldValue(name, forceUpdate = false, isChangeResponsiveField) {
+    let errMsg = '此字段必填'
     const model = this.model[name]
     /* 记录上次状态 */
     const lastStatus = model.status
@@ -325,9 +318,11 @@ export class FormStore {
     } else if (isReg(rule)) {
       /* 正则校验规则 */
       status = rule.test(value) ? 'resolve' : 'reject'
+      errMsg = '此字段不符合正则校验规则'
     } else if (typeof rule === 'function') {
       /* 自定义校验规则 */
       status = rule(value) ? 'resolve' : 'reject'
+      errMsg = '此字段不符合校验规则'
     }
     model.status = status
     if (lastStatus !== status || forceUpdate) {
@@ -335,8 +330,27 @@ export class FormStore {
       this.penddingValidateQueue.push(notify)
     }
     this.scheduleValidate()
-    return status
+    return { status, message: status === 'reject' ? errMsg : null  }
   }
+  
+  /* 表单整体验证 */
+  validateFields(callback) {
+    let status = true
+    const error = []
+    Object.keys(this.model).forEach(modelName => {
+      // 不对容器 或 隐藏字段校验
+      if (!this.model[modelName]?.isContainer && this.model[modelName]?.visible) {
+      console.log(this.model[modelName])
+      const modelStates = this.validateFieldValue(modelName, true, false)
+        if (modelStates?.status === 'reject') {
+          status = false
+          error.push({ name: this.model[modelName]?.label, msg: modelStates.message })
+        }
+      }
+    })
+    callback({status, message: status ? null : error})
+  }
+
   /* 批量调度验证更新任务 */
   scheduleValidate() {
     if (this.isSchedule) return
@@ -352,29 +366,18 @@ export class FormStore {
       })
     })
   }
-  /* 表单整体验证 */
-  validateFields(callback) {
-    let status = true
-    Object.keys(this.model).forEach(modelName => {
-      // 不对容器做校验
-      if (!this.model[modelName]?.isContainer || this.model[modelName]?.visible) {
-        const modelStates = this.validateFieldValue(modelName, true, false)
-        if (modelStates === 'reject') status = false
-      }
-    })
-    callback(status)
-  }
   /* 提交表单 */
   submit(cb) {
     // 对表单进行校验
+    console.log(this.callback, 'this.callback')
     this.validateFields(res => {
       const { onFinish, onFinishFailed } = this.callback
       if (typeof cb !== 'function') throw new Error('提交参数必须是一个函数')
-      if (!res) {
-        onFinishFailed && typeof onFinishFailed === 'function' && onFinishFailed() /* 验证失败 */
-        cb({ success: false, msg: '校验失败', data: null })
+      if (!res.status) {
+        onFinishFailed && typeof onFinishFailed === 'function' && onFinishFailed({errorFields: res?.message}) /* 验证失败 */
+        cb({ success: false, msg: '校验失败', errData: res?.message })
       } else {
-        const formData = this.getFieldsValue()
+        const formData = this.getFormValue()
         onFinish && typeof onFinish === 'function' && onFinish(formData) /* 验证成功 */
         cb({ success: true, msg: '校验成功', data: formData })
       }

@@ -35,14 +35,6 @@ export interface LabelProps {
   onChange?: (val: boolean | unknown) => void
 }
 
-type XLinkagesType = 'watch' | 'visible'
-
-export interface XLinkagesProps {
-  type: XLinkagesType // 联动类型
-  target: string // 目标field
-  condition?: string // 触发条件
-}
-
 export interface XFormItemProps {
   name: string
   children: React.ReactElement
@@ -55,7 +47,6 @@ export interface XFormItemProps {
   hidden?: boolean // 完全隐藏 表单提交时也无此字段
   trigger?: string
   validateTrigger?: string
-  xLinkages?: XLinkagesProps[] // 简单的联动协议
 }
 
 export interface SelectOptions {

@@ -1,18 +1,15 @@
 import React from 'react'
 import { FormStore } from '../utils/formStore'
 
-const useForm = ({defaultFormValue = {}, xlinkages = [], components = {}, watch = {}}: any) => {
+const useForm = ({schema = [], initialValues = {}, components = {}, watch = {}}: any) => {
   const formRef = React.useRef(null)
   const [, forceUpdate] = React.useState({})
 
   if (!formRef.current) {
-    // if (form) {
-    //   formRef.current = form
-    // } else {
-    const formStoreCurrent = new FormStore(forceUpdate, defaultFormValue, xlinkages)
+    const formStoreCurrent = new FormStore(forceUpdate, { initialValues, watch })
     formRef.current = formStoreCurrent.getForm()
-    formRef.current.components = components || {}
-    // }
+    formRef.current.customRegisterComps = components || {};
+    formRef.current.schema = schema
   }
   return formRef.current
 }
